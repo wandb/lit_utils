@@ -16,48 +16,14 @@ except ImportError:
     has_torchviz = False
 
 
-def get_weights(module):
-    weights = [parameter for name, parameter in module.named_parameters()
-               if "weight" in name.split(".")[-1]]
-    masks = [mask for name, mask in module.named_buffers()
-             if "weight_mask" in name.split(".")[-1]]
-    if masks:
-        with torch.no_grad():
-            weights = [mask * weight for mask, weight in zip(masks, weights)]
+class WandbCallback():
+    """Logs useful config and metric data to Weights & Biases."""
 
-    return weights
+    def __init__(self):
+        self.cbs = [MetadataLogCallback(), ModelSizeLogCallback(), GraphLogCallback()]
 
-
-def count_params(module):
-    return sum(p.numel() for p in module.parameters())
-
-
-def count_params_nonzero(module):
-    """Counts the total number of non-zero parameters in a module.
-
-    For compatibility with networks with active torch.nn.utils.prune methods,
-    checks for _mask tensors, which are applied during forward passes and so
-    represent the actual sparsity of the networks.
-    """
-    suffix = "_mask"
-    if module.named_buffers():
-        masks = {name[:-len(suffix)]: mask_tensor for name, mask_tensor in module.named_buffers()
-                 if name.endswith(suffix)}
-    else:
-        masks = {}
-
-    nparams = 0
-    with torch.no_grad():
-        for name, tensor in module.named_parameters():
-            if name[:len(suffix)] in masks.keys():
-                nparams += int(torch.sum(tensor != 0))
-
-    return nparams
-
-
-def fraction_nonzero(module):
-    """Gives the fraction of parameters that are non-zero in a module."""
-    return count_params_nonzero(module) / count_params(module)
+    def __getattr__(self, item):
+        return lambda *args, **kwargs: [getattr(cb, item)(*args, **kwargs) for cb in self.cbs]
 
 
 class FilterLogCallback(pl.Callback):
@@ -233,7 +199,7 @@ class SparsityLogCallback(pl.Callback):
         trainer.logger.experiment.log(sparsities)
 
 
-class MagicCallback(pl.Callback):
+class MetadataLogCallback(pl.Callback):
     """Attempts to infer metadata about a module and log to Weights & Biases."""
 
     def on_fit_start(self, trainer, module):
@@ -334,3 +300,47 @@ class ImagePredLogCallback(pl.Callback):
         else:  # assume we are in the typical one-hot case
             preds = torch.argmax(y_hats, 1)
         return preds
+
+
+def get_weights(module):
+    weights = [parameter for name, parameter in module.named_parameters()
+               if "weight" in name.split(".")[-1]]
+    masks = [mask for name, mask in module.named_buffers()
+             if "weight_mask" in name.split(".")[-1]]
+    if masks:
+        with torch.no_grad():
+            weights = [mask * weight for mask, weight in zip(masks, weights)]
+
+    return weights
+
+
+def count_params(module):
+    return sum(p.numel() for p in module.parameters())
+
+
+def count_params_nonzero(module):
+    """Counts the total number of non-zero parameters in a module.
+
+    For compatibility with networks with active torch.nn.utils.prune methods,
+    checks for _mask tensors, which are applied during forward passes and so
+    represent the actual sparsity of the networks.
+    """
+    suffix = "_mask"
+    if module.named_buffers():
+        masks = {name[:-len(suffix)]: mask_tensor for name, mask_tensor in module.named_buffers()
+                 if name.endswith(suffix)}
+    else:
+        masks = {}
+
+    nparams = 0
+    with torch.no_grad():
+        for name, tensor in module.named_parameters():
+            if name[:len(suffix)] in masks.keys():
+                nparams += int(torch.sum(tensor != 0))
+
+    return nparams
+
+
+def fraction_nonzero(module):
+    """Gives the fraction of parameters that are non-zero in a module."""
+    return count_params_nonzero(module) / count_params(module)

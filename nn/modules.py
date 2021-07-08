@@ -1,6 +1,7 @@
 """Basic Lightning Modules plus Weights & Biases features."""
 import pytorch_lightning as pl
 import torch
+import torchmetrics
 
 
 class LoggedLitModule(pl.LightningModule):
@@ -83,8 +84,8 @@ class LoggedImageClassifierModule(LoggedLitModule):
 
         super().__init__()
 
-        self.train_acc = pl.metrics.Accuracy()
-        self.valid_acc = pl.metrics.Accuracy()
+        self.train_acc = torchmetrics.Accuracy()
+        self.valid_acc = torchmetrics.Accuracy()
 
         self.training_metrics.append(self.train_acc)
         self.validation_metrics.append(self.valid_acc)

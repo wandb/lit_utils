@@ -11,7 +11,7 @@ def run_static_quantization(network, xs, qconfig="fbgemm"):
     Note that this uses torch.quantization, rather than PyTorchLightning.
 
     Args:
-        network: torch.Module, network to be quantized.
+        network: torch.nn.Module, network to be quantized.
         xs: torch.Tensor, valid inputs for network.forward.
         qconfig: string, "fbgemm" to quantize for server/x86, "qnnpack" for mobile/ARM
     """

@@ -1,4 +1,4 @@
-"""Lightning DataModules and associated utilities."""
+"""Lightning DataModules and associated utilities for MNIST datasets."""
 import multiprocessing
 import os
 
@@ -10,7 +10,6 @@ import torchvision
 
 DEFAULT_WORKERS = multiprocessing.cpu_count()  # cpu_count is a good default worker count
 
-
 # drop slow mirror from list of MNIST mirrors
 torchvision.datasets.MNIST.mirrors = [mirror for mirror in torchvision.datasets.MNIST.mirrors
                                       if not mirror.startswith("http://yann.lecun.com")]
@@ -19,7 +18,7 @@ torchvision.datasets.MNIST.mirrors = [mirror for mirror in torchvision.datasets.
 class AbstractMNISTDataModule(pl.LightningDataModule):
     """Abstract DataModule for the MNIST handwritten digit dataset.
 
-    Must be made concrete by defining a .setup method which sets attrributes
+    Must be made concrete by defining a .setup method which sets attributes
     self.training_data and self.validation_data.
 
     Only downloads the training set, but performs a validation split in the
@@ -115,8 +114,9 @@ class AutoEncoderMNIST(torchvision.datasets.MNIST):
 
 class AutoEncoderMNISTDataModule(AbstractMNISTDataModule):
     """DataModule for an MNIST handwritten digit auto-encoding task."""
+    full_size = 60000
 
-    def __init__(self, batch_size=64, validation_size=10_000, transforms=None):
+    def __init__(self, batch_size=64, validation_size=10000, transforms=None):
         super().__init__(batch_size=batch_size, validation_size=validation_size)
 
         if transforms is None:
@@ -125,7 +125,6 @@ class AutoEncoderMNISTDataModule(AbstractMNISTDataModule):
             transforms = [transforms]
 
         self.transforms = [torchvision.transforms.ToTensor()] + transforms
-        self.full_size = 60_000
 
     def setup(self, stage=None):
         composed_transform = torchvision.transforms.Compose(self.transforms)
