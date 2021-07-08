@@ -17,8 +17,11 @@ class FERDataModule(pl.LightningDataModule):
     """DataModule for downloading and preparing the FER2013 dataset."""
 
     tar_url = "https://www.dropbox.com/s/opuvvdv3uligypx/fer2013.tar"
-    local_path = Path("fer2013")
+    data_root = Path(".") / "data"
+    local_path = data_root / "fer2013"
     width, height = 48, 48
+    classes = ["anger", "disgust", "fear", "happiness",
+               "sadness", "surprise", "neurality"]
 
     def __init__(self, batch_size=64, num_workers=DEFAULT_NUM_WORKERS):
         super().__init__()
@@ -65,7 +68,7 @@ class FERDataModule(pl.LightningDataModule):
 
         This DataLoader is used during validation, at the end of each epoch.
         """
-        return DataLoader(self.validation_data, batch_size=self.val_batch_size,
+        return DataLoader(self.validation_data, batch_size=2 * self.val_batch_size,
                           num_workers=self.num_workers)
 
     def download_data(self):

@@ -20,16 +20,15 @@ class CIFAR10DataModule(pl.LightningDataModule):
                 If float, fraction of examples in training set.
     debug:  bool. If True, cut dataset size by a factor of 10.
     """
+    data_root = Path(".") / "data"
+    seed = 117
+    classes = ["airplane", "automobile", "bird", "cat", "deer",
+               "dog", "frog", "horse", "ship", "truck"]
 
-    def __init__(self, batch_size, train_size=0.8, debug=False):
+    def __init__(self, batch_size, train_size=0.8):
         super().__init__()
 
-        self.data_dir = Path(".") / "data"
-        self.seed = 117
-
-        self.train_size = train_size
-        self.batch_size = batch_size
-        self.debug = debug
+        self.train_size, self.batch_size = train_size, batch_size
 
         self.transform = transforms.Compose(
             [transforms.ToTensor(),
@@ -46,36 +45,32 @@ class CIFAR10DataModule(pl.LightningDataModule):
     def setup(self, stage=None):
         """Set up training and test data and perform our train/val split."""
         if stage in (None, "fit"):
-            cifar10_full = torchvision.datasets.CIFAR10(self.data_dir, train=True,
-                                                        transform=self.transform)
-            if self.debug:
-                cifar10_full.data = cifar10_full.data[::10]
-                cifar10_full.targets = cifar10_full.labels[::10]
-
-            total_size, *self.dims = cifar10_full.data.shape
-            train_size, val_size = self.get_split_sizes(self.train_size, total_size)
+            self.cifar10_fit = torchvision.datasets.CIFAR10(
+                self.data_dir, train=True, download=False, transform=self.transform)
+            total_size, *self.dims = self.cifar10_fit.data.shape
+            split_sizes = self.get_split_sizes(self.train_size, total_size)
 
             split_generator = torch.Generator().manual_seed(self.seed)
-            self.train, self.val = torch.utils.data.random_split(
-                cifar10_full, [train_size, val_size], split_generator)
+            self.training_data, self.validation_data = torch.utils.data.random_split(
+                self.cifar10_fit, split_sizes, split_generator)
 
         if stage in (None, "test"):
             self.test = torchvision.datasets.CIFAR10(self.data_dir, train=False,
                                                      transform=self.transform)
 
     def train_dataloader(self):
-        trainloader = DataLoader(self.train, batch_size=self.batch_size,
+        trainloader = DataLoader(self.training_data, batch_size=self.batch_size,
                                  shuffle=True, num_workers=DEFAULT_NUM_WORKERS)
         return trainloader
 
     def val_dataloader(self):
-        valloader = torch.utils.data.DataLoader(self.val, batch_size=self.batch_size,
-                                                shuffle=False, num_workers=DEFAULT_NUM_WORKERS)
+        valloader = DataLoader(self.validation_data, batch_size=2 * self.batch_size,
+                               shuffle=False, num_workers=DEFAULT_NUM_WORKERS)
         return valloader
 
     def test_dataloader(self):
-        testloader = torch.utils.data.DataLoader(self.test, batch_size=self.batch_size,
-                                                 shuffle=False, num_workers=DEFAULT_NUM_WORKERS)
+        testloader = DataLoader(self.test_data, batch_size=2 * self.batch_size,
+                                shuffle=False, num_workers=DEFAULT_NUM_WORKERS)
         return testloader
 
     @staticmethod
