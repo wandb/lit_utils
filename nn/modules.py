@@ -61,7 +61,7 @@ class LoggedLitModule(pl.LightningModule):
         for metric in self.test_metrics:
             self.add_metric(metric, logging_scalars, y_hats, ys)
 
-        self.do_logging(xs, ys, idx, y_hats, logging_scalars, step="tes")
+        self.do_logging(xs, ys, idx, y_hats, logging_scalars, step="test")
 
         return {"loss": loss, "y_hats": y_hats}
 
