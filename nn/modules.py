@@ -14,7 +14,7 @@ class LoggedLitModule(pl.LightningModule):
     where each batch == (xs, ys).
 
     If this is not true, overwrite _train_forward
-    and optionally _val_forward.
+    and optionally _val_forward and _test_forward.
     """
 
     def __init__(self):
@@ -22,6 +22,7 @@ class LoggedLitModule(pl.LightningModule):
 
         self.training_metrics = torch.nn.ModuleList([])
         self.validation_metrics = torch.nn.ModuleList([])
+        self.test_metrics = torch.nn.ModuleList([])
 
         self.graph_logged = False
 
@@ -51,6 +52,19 @@ class LoggedLitModule(pl.LightningModule):
 
         return {"loss": loss, "y_hats": y_hats}
 
+    def test_step(self, xys, idx):
+        xs, ys = xys
+        y_hats = self._test_forward(xs)
+        loss = self.loss(y_hats, ys)
+
+        logging_scalars = {"loss": loss}
+        for metric in self.test_metrics:
+            self.add_metric(metric, logging_scalars, y_hats, ys)
+
+        self.do_logging(xs, ys, idx, y_hats, logging_scalars, step="tes")
+
+        return {"loss": loss, "y_hats": y_hats}
+
     def do_logging(self, xs, ys, idx, y_hats, scalars, step="training"):
         self.log_dict(
             {step + "/" + name: value for name, value in scalars.items()})
@@ -71,6 +85,10 @@ class LoggedLitModule(pl.LightningModule):
         """Overwrite this method when training and val forward differ."""
         return self._train_forward(xs)
 
+    def _test_forward(self, xs):
+        """Overwrite this method when val and test forward differ."""
+        return self._val_forward(xs)
+
 
 class LoggedImageClassifierModule(LoggedLitModule):
     """LightningModule for ImageClassification with Weights and Biases logging."""
@@ -80,9 +98,11 @@ class LoggedImageClassifierModule(LoggedLitModule):
 
         self.train_acc = torchmetrics.Accuracy()
         self.valid_acc = torchmetrics.Accuracy()
+        self.test_acc = torchmetrics.Accuracy()
 
         self.training_metrics.append(self.train_acc)
         self.validation_metrics.append(self.valid_acc)
+        self.test_metrics.append(self.test_acc)
 
     def add_metric(self, metric, logging_scalars, y_hats, ys):
         metric_str = metric.__class__.__name__.lower()
