@@ -25,6 +25,10 @@ class WandbCallback():
     def __getattr__(self, item):
         return lambda *args, **kwargs: [getattr(cb, item)(*args, **kwargs) for cb in self.cbs]
 
+    # the base class's on_save_checkpoint method crashes if called with *args, **kwargs
+    def on_save_checkpoint(self, trainer, module, checkpoint):
+        return None
+
 
 class FilterLogCallback(pl.Callback):
     """PyTorch Lightning Callback for logging the "filters" of a PyTorch Module.
@@ -148,7 +152,7 @@ class ModelSizeLogCallback(pl.Callback):
             torch.save(module.state_dict(), f)
             size_mb = os.path.getsize(f.name) / 1e6
         if print_size:
-            print(f"{round(size_mb, 2)} MB")
+            print(f"Final Disk Size: {round(size_mb, 2)} MB")
         return size_mb
 
     def on_fit_start(self, trainer, module):
@@ -175,7 +179,7 @@ class GraphLogCallback(pl.Callback):
         graph.format = "png"
         fname = Path(trainer.logger.experiment.dir) / "graph"
         graph.render(fname)
-        wandb.save(str(fname.with_suffix("." + graph.format)))
+        wandb.save(str(fname.with_suffix("." + graph.format)), base_path=fname.parent)
 
 
 class SparsityLogCallback(pl.Callback):
