@@ -17,13 +17,12 @@ class LoggedLitModule(pl.LightningModule):
     and optionally _val_forward.
     """
 
-    def __init__(self, max_logged_inputs=0):
+    def __init__(self):
         super().__init__()
 
         self.training_metrics = torch.nn.ModuleList([])
         self.validation_metrics = torch.nn.ModuleList([])
 
-        self.max_logged_inputs = max_logged_inputs
         self.graph_logged = False
 
     def training_step(self, xys, idx):
@@ -45,7 +44,7 @@ class LoggedLitModule(pl.LightningModule):
         loss = self.loss(y_hats, ys)
 
         logging_scalars = {"loss": loss}
-        for metric in self.training_metrics:
+        for metric in self.validation_metrics:
             self.add_metric(metric, logging_scalars, y_hats, ys)
 
         self.do_logging(xs, ys, idx, y_hats, logging_scalars, step="validation")
@@ -55,11 +54,6 @@ class LoggedLitModule(pl.LightningModule):
     def do_logging(self, xs, ys, idx, y_hats, scalars, step="training"):
         self.log_dict(
             {step + "/" + name: value for name, value in scalars.items()})
-
-        if idx == 0:
-            if step == "training":
-                if self.max_logged_inputs > 0:
-                    self.log_examples(xs, ys, y_hats)
 
     def on_pretrain_routine_start(self):
         print(self)
