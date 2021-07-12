@@ -30,5 +30,6 @@ else:
 
 
 def filter_warnings():
+    """Filters warnings that students do not need to see."""
     warnings.simplefilter("ignore", category=UserWarning)
     warnings.simplefilter("ignore", category=LightningDeprecationWarning)
