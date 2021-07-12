@@ -1,4 +1,17 @@
-"""Lightning DataModules and associated utilities for MNIST-style datasets."""
+"""Lightning DataModules and associated utilities for MNIST-style datasets.
+
+Based on code from torchvision MNIST datasets.
+
+All datasets are stored in memory as tensors and then converted to PIL
+before applying preprocessing.
+
+MNIST-style datasets that are not the handwritten digits dataset can inherit
+from the base class and only need to over-write the mirrors, resources, classes,
+and folder attributes/properties.
+
+Unlike most MNIST implementations but like most PNG images, uses 255 to represent white
+background and 0 to represent black foreground/strokes.
+"""
 from math import floor
 import multiprocessing
 import os
@@ -153,6 +166,7 @@ class ClassificationMNIST(torchvision.datasets.MNIST):
 
     Modified from torchvision MNIST Dataset code.
     """
+    # remove slow mirror from default list
     mirrors = [mirror for mirror in torchvision.datasets.MNIST.mirrors
                if not mirror.startswith("http://yann.lecun.com")]
 
