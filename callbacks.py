@@ -298,7 +298,7 @@ class ImagePredLogCallback(pl.Callback):
 
     @staticmethod
     def preds_from_y_hats(y_hats):
-        if y_hats.shape[-1] == 1:  # handle single-class case
+        if y_hats.shape[-1] == 1 or len(y_hats.shape) == 1:  # handle binary classification case
             preds = torch.greater(y_hats, 0.5)
             preds = [bool(pred) for pred in preds]
         else:  # assume we are in the typical one-hot case
