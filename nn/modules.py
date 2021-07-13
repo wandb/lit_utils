@@ -112,3 +112,12 @@ class LoggedImageClassifierModule(LoggedLitModule):
         self.training_metrics.append(self.train_acc)
         self.validation_metrics.append(self.valid_acc)
         self.test_metrics.append(self.test_acc)
+
+    def log_metric(self, metric, logging_scalars, y_hats, ys):
+        metric_str = metric.__class__.__name__.lower()
+        if metric_str == "accuracy":
+            float_types = [torch.float32, torch.float16, torch.float64]
+            if ys.dtype in float_types:  # handle binary classification with MSELoss case
+                ys = ys.int()  # accuracy expects ints, MSELoss expects floats
+        value = metric(y_hats, ys)
+        logging_scalars[metric_str] = value
