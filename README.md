@@ -49,15 +49,19 @@ included in Colab:
 !cd "/content/lit_utils" && git pull
 ```
 
+For local development,
+also invoke `!pip install -r requirements-dev.txt`.
+
+# Usage
+
 The library is imported as `lu`:
 ```python
 import lit_utils as lu
 ```
 
-And you should use the
+And in educational notebooks you should use
 ```python
 lu.utils.filter_warnings()
 ```
 
-For local development,
-also invoke `!pip install -r requirements-dev.txt`.
+to filter our `UserWarning`s etc.
