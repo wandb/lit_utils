@@ -98,10 +98,6 @@ class LoggedLitModule(pl.LightningModule):
                      + "and set self.optimizer_params to a dictionary of keyword arguments.")
         raise NotImplementedError(error_msg)
 
-    def loss(self, *args, **kwargs):
-        error_msg = "To use LoggedLitModule, you must set self.loss to a callable"
-        raise NotImplementedError(error_msg)
-
 
 class LoggedImageClassifierModule(LoggedLitModule):
     """LightningModule for image classification with Weights and Biases logging."""
