@@ -10,8 +10,9 @@ class LoggedLitModule(pl.LightningModule):
     By default, assumes that your training loop involves inputs (xs)
     fed to .forward to produce outputs (y_hats)
     that are compared to targets (ys)
-    by a loss and by metrics,
+    by self.loss and by metrics,
     where each batch == (xs, ys).
+    This loss is fed to self.optimizer.
 
     If this is not true, overwrite _train_forward
     and optionally _val_forward and _test_forward.
@@ -33,7 +34,7 @@ class LoggedLitModule(pl.LightningModule):
 
         logging_scalars = {"loss": loss}
         for metric in self.training_metrics:
-            self.add_metric(metric, logging_scalars, y_hats, ys)
+            self.log_metric(metric, logging_scalars, y_hats, ys)
 
         self.do_logging(xs, ys, idx, y_hats, logging_scalars)
 
@@ -46,7 +47,7 @@ class LoggedLitModule(pl.LightningModule):
 
         logging_scalars = {"loss": loss}
         for metric in self.validation_metrics:
-            self.add_metric(metric, logging_scalars, y_hats, ys)
+            self.log_metric(metric, logging_scalars, y_hats, ys)
 
         self.do_logging(xs, ys, idx, y_hats, logging_scalars, step="validation")
 
@@ -59,7 +60,7 @@ class LoggedLitModule(pl.LightningModule):
 
         logging_scalars = {"loss": loss}
         for metric in self.test_metrics:
-            self.add_metric(metric, logging_scalars, y_hats, ys)
+            self.log_metric(metric, logging_scalars, y_hats, ys)
 
         self.do_logging(xs, ys, idx, y_hats, logging_scalars, step="test")
 
@@ -72,7 +73,7 @@ class LoggedLitModule(pl.LightningModule):
     def on_pretrain_routine_start(self):
         print(self)
 
-    def add_metric(self, metric, logging_scalars, y_hats, ys):
+    def log_metric(self, metric, logging_scalars, y_hats, ys):
         metric_str = metric.__class__.__name__.lower()
         value = metric(y_hats, ys)
         logging_scalars[metric_str] = value
@@ -89,9 +90,21 @@ class LoggedLitModule(pl.LightningModule):
         """Overwrite this method when val and test forward differ."""
         return self._val_forward(xs)
 
+    def configure_optimizers(self):
+        return self.optimizer(self.parameters(), **self.optimizer_params)
+
+    def optimizer(self, *args, **kwargs):
+        error_msg = ("To use LoggedLitModule, you must set self.optimizer to a torch-style Optimizer"
+                     + "and set self.optimizer_params to a dictionary of keyword arguments.")
+        raise NotImplementedError(error_msg)
+
+    def loss(self, *args, **kwargs):
+        error_msg = "To use LoggedLitModule, you must set self.loss to a callable"
+        raise NotImplementedError(error_msg)
+
 
 class LoggedImageClassifierModule(LoggedLitModule):
-    """LightningModule for ImageClassification with Weights and Biases logging."""
+    """LightningModule for image classification with Weights and Biases logging."""
     def __init__(self):
 
         super().__init__()
@@ -103,21 +116,3 @@ class LoggedImageClassifierModule(LoggedLitModule):
         self.training_metrics.append(self.train_acc)
         self.validation_metrics.append(self.valid_acc)
         self.test_metrics.append(self.test_acc)
-
-    def add_metric(self, metric, logging_scalars, y_hats, ys):
-        metric_str = metric.__class__.__name__.lower()
-        if metric_str == "accuracy":
-            preds = self.preds_from_y_hats(y_hats)
-            value = metric(preds, ys)
-        else:
-            value = metric(y_hats, ys)
-        logging_scalars[metric_str] = value
-
-    @staticmethod
-    def preds_from_y_hats(y_hats):
-        if y_hats.shape[-1] == 1:  # handle single-class case
-            preds = torch.greater(y_hats, 0.5)
-            preds = [bool(pred) for pred in preds]
-        else:  # assume we are in the typical one-hot case
-            preds = torch.argmax(y_hats, 1)
-        return preds
