@@ -26,7 +26,7 @@ class Convolution2d(torch.nn.Module):
 
         preactivation = []
         if batchnorm == "pre":
-            preactivation.append(torch.nn.BatchNorm2d())
+            preactivation.append(torch.nn.BatchNorm2d(out_channels))
 
         if activation is None:
             activation = torch.nn.Identity()
@@ -38,14 +38,14 @@ class Convolution2d(torch.nn.Module):
         if dropout is not None:
             postactivation.append(torch.nn.Dropout2d(dropout))
         if batchnorm == "post":
-            postactivation.append(torch.nn.BatchNorm2d())
+            postactivation.append(torch.nn.BatchNorm2d(out_channels))
 
         self.preactivation = torch.nn.Sequential(*preactivation)
         self.activation = activation
         self.postactivation = torch.nn.Sequential(*postactivation)
 
     def forward(self, x):
-        return self.postactivation(self.activation(self.preactivation(self.linear(x))))
+        return self.postactivation(self.activation(self.preactivation(self.conv(x))))
 
 
 class ConvolutionTranspose2d(torch.nn.Module):
@@ -73,7 +73,7 @@ class ConvolutionTranspose2d(torch.nn.Module):
 
         preactivation = []
         if batchnorm == "pre":
-            preactivation.append(torch.nn.BatchNorm2d())
+            preactivation.append(torch.nn.BatchNorm2d(out_channels))
 
         if activation is None:
             activation = torch.nn.Identity()
@@ -85,11 +85,11 @@ class ConvolutionTranspose2d(torch.nn.Module):
         if dropout is not None:
             postactivation.append(torch.nn.Dropout2d(dropout))
         if batchnorm == "post":
-            postactivation.append(torch.nn.BatchNorm2d())
+            postactivation.append(torch.nn.BatchNorm2d(out_channels))
 
         self.preactivation = torch.nn.ModuleList(preactivation)
         self.activation = activation
         self.postactivation = torch.nn.ModuleList(postactivation)
 
     def forward(self, x):
-        return self.postactivation(self.activation(self.preactivation(self.linear(x))))
+        return self.postactivation(self.activation(self.preactivation(self.conv(x))))
