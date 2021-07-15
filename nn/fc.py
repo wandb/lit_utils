@@ -24,7 +24,7 @@ class FullyConnected(torch.nn.Module):
 
         preactivation = []
         if batchnorm == "pre":
-            preactivation.append(torch.nn.BatchNorm1d())
+            preactivation.append(torch.nn.BatchNorm1d(out_features))
 
         if activation is None:
             activation = torch.nn.Identity()
