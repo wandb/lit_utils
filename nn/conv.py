@@ -87,9 +87,9 @@ class ConvolutionTranspose2d(torch.nn.Module):
         if batchnorm == "post":
             postactivation.append(torch.nn.BatchNorm2d(out_channels))
 
-        self.preactivation = torch.nn.ModuleList(preactivation)
+        self.preactivation = torch.nn.Sequential(*preactivation)
         self.activation = activation
-        self.postactivation = torch.nn.ModuleList(postactivation)
+        self.postactivation = torch.nn.Sequential(*postactivation)
 
     def forward(self, x):
         return self.postactivation(self.activation(self.preactivation(self.conv(x))))
