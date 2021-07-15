@@ -13,7 +13,8 @@ class FullyConnected(torch.nn.Module):
                     If None, the identity function is applied.
         batchnorm: String or None. If not None, specifies whether to apply batchnorm
                    before ("pre") or after ("post") the activation function.
-        dropout: float or None. If not None,
+        dropout: float or None. If not None, adds dropout layer after the activation function
+                 using the provided value as the dropout probability.
     """
 
     def __init__(self, in_features, out_features, activation=None,
@@ -35,7 +36,7 @@ class FullyConnected(torch.nn.Module):
         if dropout is not None:
             postactivation.append(torch.nn.Dropout(dropout))
         if batchnorm == "post":
-            postactivation.append(torch.nn.BatchNorm1d())
+            postactivation.append(torch.nn.BatchNorm1d(out_features))
 
         self.preactivation = torch.nn.Sequential(*preactivation)
         self.activation = activation
