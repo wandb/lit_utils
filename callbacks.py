@@ -172,7 +172,10 @@ class GraphLogCallback(pl.Callback):
 
     def on_train_batch_end(self, trainer, module, outputs, batch, batch_idx, dataloader_idx):
         if not self.graph_logged:
-            self.log_graph(trainer, module, outputs["loss"])
+            try:
+                self.log_graph(trainer, module, outputs["y_hats"])
+            except KeyError:
+                pass
             self.graph_logged = True
 
     @staticmethod
