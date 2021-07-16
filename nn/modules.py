@@ -25,8 +25,6 @@ class LoggedLitModule(pl.LightningModule):
         self.validation_metrics = torch.nn.ModuleList([])
         self.test_metrics = torch.nn.ModuleList([])
 
-        self.graph_logged = False
-
     def training_step(self, xys, idx):
         xs, ys = xys
         y_hats = self._train_forward(xs)
