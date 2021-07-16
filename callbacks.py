@@ -48,16 +48,19 @@ class FilterLogCallback(pl.Callback):
         self.image_size = image_size
         self.log_input, self.log_output = log_input, log_output
 
-    def on_validation_epoch_end(self, trainer, pl_module):
-        if self.log_input:
-            input_filters = self.fetch_filters(pl_module, reversed=False,
-                                               output_shape=self.image_size)
-            self.log_filters(input_filters, "filters/input", trainer)
+    def on_train_epoch_end(self, trainer, pl_module):
+        pl_module.eval()
+        with torch.no_grad():
+            if self.log_input:
+                input_filters = self.fetch_filters(pl_module, reversed=False,
+                                                   output_shape=self.image_size)
+                self.log_filters(input_filters, "filters/input", trainer)
 
-        if self.log_output:
-            output_filters = self.fetch_filters(pl_module, reversed=True,
-                                                output_shape=self.image_size)
-            self.log_filters(output_filters, "filters/output", trainer)
+            if self.log_output:
+                output_filters = self.fetch_filters(pl_module, reversed=True,
+                                                    output_shape=self.image_size)
+                self.log_filters(output_filters, "filters/output", trainer)
+        pl_module.train()
 
     def log_filters(self, filters, key, trainer):
         trainer.logger.experiment.log({
