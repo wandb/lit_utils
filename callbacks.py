@@ -225,14 +225,18 @@ class MetadataLogCallback(pl.Callback):
 
     @staticmethod
     def detect_dropout(module):
-        dropout_cfg_dict = {}
+        dropout_cfg_dict = {"has_dropout": False}
         dropout_ct, dropout2d_ct = 0, 0
         for module in module.modules():
             if isinstance(module, torch.nn.Dropout):
-                dropout_cfg_dict[f"dropout.{dropout_ct}.p"] = module.p
+                if module.p > 0:
+                    dropout_cfg_dict["has_dropout"] = True
+                dropout_cfg_dict[f"1d.{dropout_ct}.p"] = module.p
                 dropout_ct += 1
             if isinstance(module, torch.nn.Dropout2d):
-                dropout_cfg_dict[f"dropout.{dropout2d_ct}.p"] = module.p
+                if module.p > 0:
+                    dropout_cfg_dict["has_dropout"] = True
+                dropout_cfg_dict[f"2d.{dropout2d_ct}.p"] = module.p
                 dropout2d_ct += 1
         return dropout_cfg_dict
 
