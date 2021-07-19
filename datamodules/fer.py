@@ -23,27 +23,26 @@ class FERDataModule(pl.LightningDataModule):
     classes = ["anger", "disgust", "fear", "happiness",
                "sadness", "surprise", "neurality"]
 
-    def __init__(self, batch_size=64, num_workers=DEFAULT_NUM_WORKERS):
+    def __init__(self, batch_size=64, validation_size=0.2, num_workers=DEFAULT_NUM_WORKERS):
         super().__init__()
         self.batch_size = batch_size
         self.val_batch_size = 2 * self.batch_size
         self.num_workers = num_workers
+        self.validation_size = validation_size
 
-    def prepare_data(self, validation_size=0.2, force_reload=False):
-        if hasattr(self, "training_data") and not force_reload:
-            return  # only re-run if we have not been run before
-
+    def setup(self):
         # download the data from the internet
         self.download_data()
 
-        # read it from a .csv file
+    def prepare_data(self):
+        # read data from a .csv file
         faces, emotions = self.read_data()
 
         # normalize it
         faces = torch.divide(faces, 255.)
 
         # split it into training and validation
-        validation_size = int(len(faces) * validation_size)
+        validation_size = int(len(faces) * self.validation_size)
 
         self.training_data = torch.utils.data.TensorDataset(
           faces[:-validation_size], emotions[:-validation_size])
@@ -57,25 +56,23 @@ class FERDataModule(pl.LightningDataModule):
 
     def train_dataloader(self):
         """The DataLoaders returned by a DataModule produce data for a model.
-
         This DataLoader is used during training.
         """
         return DataLoader(self.training_data, batch_size=self.batch_size,
-                          num_workers=self.num_workers)
+                          num_workers=self.num_workers, shuffle=True)
 
     def val_dataloader(self):
         """The DataLoaders returned by a DataModule produce data for a model.
-
         This DataLoader is used during validation, at the end of each epoch.
         """
-        return DataLoader(self.validation_data, batch_size=2 * self.val_batch_size,
+        return DataLoader(self.validation_data, batch_size=self.val_batch_size,
                           num_workers=self.num_workers)
 
     def download_data(self):
         if not os.path.exists(self.local_path):
             print("Downloading the face emotion dataset...")
-            subprocess.check_output(
-                f"curl -SL {self.tar_url} | tar xz", shell=True)
+            subprocess.check_output(f"curl -SL {self.tar_url} | tar xz", shell=True)
+            subprocess.check_output(f"mv fer2013 {self.data_root}", shell=True)
             print("...done")
 
     def read_data(self):
