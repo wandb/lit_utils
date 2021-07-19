@@ -22,7 +22,7 @@ class Convolution2d(torch.nn.Module):
                  activation=None,
                  batchnorm=None, dropout=None, **kwargs):
         super().__init__()
-        self.conv = torch.nn.Conv2d(in_channels, out_channels, **kwargs)
+        self.conv = torch.nn.Conv2d(in_channels, out_channels, kernel_size, **kwargs)
 
         preactivation = []
         if batchnorm == "pre":
@@ -66,10 +66,9 @@ class ConvolutionTranspose2d(torch.nn.Module):
     """
 
     def __init__(self, in_channels, out_channels, kernel_size,
-                 activation=None,
-                 batchnorm=None, dropout=None, **kwargs):
+                 activation=None, batchnorm=None, dropout=None, **kwargs):
         super().__init__()
-        self.conv = torch.nn.ConvTranspose2d(in_channels, out_channels, **kwargs)
+        self.conv = torch.nn.ConvTranspose2d(in_channels, out_channels, kernel_size. **kwargs)
 
         preactivation = []
         if batchnorm == "pre":
