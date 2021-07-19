@@ -43,7 +43,7 @@ class FilterLogCallback(pl.Callback):
     """
     def __init__(self, image_size=None, log_input=False, log_output=False):
         super().__init__()
-        if len(image_size) == 2:
+        if image_size is not None and len(image_size) == 2:
             image_size = [1] + list(image_size)
         self.image_size = image_size
         self.log_input, self.log_output = log_input, log_output
@@ -94,7 +94,7 @@ class FilterLogCallback(pl.Callback):
                 raise ValueError("filter_weights must have 2 or 4 dimensions, " +
                                  f"but had {filter_weights.ndim}")
             if output_shape is None:
-                raise ValueError("output_shape must be provided when final weights are linear")
+                raise ValueError("output_shape must be provided to get filters from linear layer")
             filter_weights = self.reshape_linear_weights(filter_weights, output_shape)
             return filter_weights
 
