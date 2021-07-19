@@ -19,6 +19,7 @@ class FERDataModule(pl.LightningDataModule):
     tar_url = "https://www.dropbox.com/s/opuvvdv3uligypx/fer2013.tar"
     data_root = Path(".") / "data"
     local_path = data_root / "fer2013"
+    csv_file = local_path / "fer2013.csv"
     width, height = 48, 48
     classes = ["anger", "disgust", "fear", "happiness",
                "sadness", "surprise", "neurality"]
@@ -32,6 +33,7 @@ class FERDataModule(pl.LightningDataModule):
 
     def setup(self):
         # download the data from the internet
+        os.makedirs(self.local_path, exist_ok=True)
         self.download_data()
 
     def prepare_data(self):
@@ -42,17 +44,17 @@ class FERDataModule(pl.LightningDataModule):
         faces = torch.divide(faces, 255.)
 
         # split it into training and validation
-        validation_size = int(len(faces) * self.validation_size)
+        num_validation = int(len(faces) * self.validation_size)
 
         self.training_data = torch.utils.data.TensorDataset(
-          faces[:-validation_size], emotions[:-validation_size])
+          faces[:-num_validation], emotions[:-num_validation])
         self.validation_data = torch.utils.data.TensorDataset(
-          faces[-validation_size:], emotions[-validation_size:])
+          faces[-num_validation:], emotions[-num_validation:])
 
         # record metadata
-        self.num_total, self.num_classes = emotions.shape[0], torch.max(emotions)
-        self.num_train = self.num_total - validation_size
-        self.num_validation = validation_size
+        self.num_total, self.num_classes = emotions.shape[0], len(self.classes)
+        self.num_train = self.num_total - num_validation
+        self.num_validation = num_validation
 
     def train_dataloader(self):
         """The DataLoaders returned by a DataModule produce data for a model.
@@ -69,15 +71,15 @@ class FERDataModule(pl.LightningDataModule):
                           num_workers=self.num_workers)
 
     def download_data(self):
-        if not os.path.exists(self.local_path):
+        if not os.path.exists(self.csv_file):
             print("Downloading the face emotion dataset...")
             subprocess.check_output(f"curl -SL {self.tar_url} | tar xz", shell=True)
-            subprocess.check_output(f"mv fer2013 {self.local_path}", shell=True)
+            subprocess.check_output(f"mv fer2013 -t {self.local_path}", shell=True)
             print("...done")
 
     def read_data(self):
         """Read the data from a .csv into torch Tensors."""
-        data = pd.read_csv(self.local_path / "fer2013.csv")
+        data = pd.read_csv(self.csv_file)
         pixels = data["pixels"].tolist()
         faces = []
         for pixel_sequence in pixels:
