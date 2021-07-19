@@ -72,7 +72,7 @@ class FERDataModule(pl.LightningDataModule):
         if not os.path.exists(self.local_path):
             print("Downloading the face emotion dataset...")
             subprocess.check_output(f"curl -SL {self.tar_url} | tar xz", shell=True)
-            subprocess.check_output(f"mv fer2013 {self.data_root}", shell=True)
+            subprocess.check_output(f"mv fer2013 {self.local_path}", shell=True)
             print("...done")
 
     def read_data(self):
