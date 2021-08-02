@@ -3,16 +3,14 @@ import os
 from pathlib import Path
 import tempfile
 
-from lit_utils.nn.fc import FullyConnected
-from lit_utils.nn.conv import Convolution2d, ConvolutionTranspose2d
 import numpy as np
 import pytorch_lightning as pl
 import torch
 import wandb
 
-
 try:
     import torchviz
+
     has_torchviz = True
 except ImportError:
     has_torchviz = False
@@ -43,6 +41,7 @@ class FilterLogCallback(pl.Callback):
     log_output boolean flags) for logging and sends them to Weights & Biases as
     images.
     """
+
     def __init__(self, image_size=None, log_input=False, log_output=False):
         super().__init__()
         if image_size is not None and len(image_size) == 2:
@@ -105,7 +104,7 @@ class FilterLogCallback(pl.Callback):
         if len(output_shape) < 2:
             raise ValueError("output_shape must be at least H x W")
         if np.prod(output_shape) != filter_weights.shape[1]:
-            raise("shape of filter_weights did not match output_shape")
+            raise ("shape of filter_weights did not match output_shape")
         return torch.reshape(filter_weights, [-1] + list(output_shape))
 
 
@@ -115,6 +114,7 @@ class ImageLogCallback(pl.Callback):
     Useful in combination with, e.g., an autoencoder architecture,
     a convolutional GAN, or any image-to-image transformation network.
     """
+
     def __init__(self, val_samples, num_samples=32):
         super().__init__()
         self.val_imgs, _ = val_samples
@@ -131,7 +131,7 @@ class ImageLogCallback(pl.Callback):
             "test/examples": [wandb.Image(mosaic, caption=caption)
                               for mosaic in mosaics],
             "global_step": trainer.global_step
-            })
+        })
 
 
 class ModelSizeLogCallback(pl.Callback):
@@ -319,49 +319,26 @@ class ImagePredLogCallback(pl.Callback):
 
 
 def get_weights(module):
-    weights = []
-    masks = []
-    for submodule in module.children():
-        # recursively go down to individual layers
-        if isinstance(submodule, torch.nn.Sequential):
-            parent = submodule
-            while(isinstance(submodule, torch.nn.Sequential)):
-                parent = submodule
-                submodule = submodule.children()
-            for layer in parent.children():
-                if allowed_filter_type(layer):
-                    for name, parameter in layer.named_parameters():
-                        if "weight" in name.split(".")[-1]:
-                            weights.append(parameter)
-                    for name, mask in layer.named_buffers():
-                        if "weight_mask" in name.split(".")[-1]:
-                            masks.append(mask)
-        # else check if it is allowed type
-        elif allowed_filter_type(submodule):
-            for name, parameter in submodule.named_parameters():
-                if "weight" in name.split(".")[-1]:
-                    weights.append(parameter)
-            for name, mask in submodule.named_buffers():
-                if "weight_mask" in name.split(".")[-1]:
-                    masks.append(mask)
-    if masks:
-        with torch.no_grad():
-            weights = [mask * weight for mask, weight in zip(masks, weights)]
-
-    return weights
+    allowed_filter_types = (
+        torch.nn.Linear,
+        torch.nn.Conv2d,
+        torch.nn.ConvTranspose2d
+    )
+    ls = [m for m in module.modules() if isinstance(m, allowed_filter_types)]
+    ws = list(map(get_masked_weights, ls))
+    return ws
 
 
-def allowed_filter_type(module):
-    expr = isinstance(module, torch.nn.Conv2d)
-    expr = expr or issubclass(type(module), torch.nn.Conv2d)
-    expr = expr or isinstance(module, torch.nn.ConvTranspose2d)
-    expr = expr or issubclass(type(module), torch.nn.ConvTranspose2d)
-    expr = expr or isinstance(module, torch.nn.Linear)
-    expr = expr or issubclass(type(module), torch.nn.Linear)
-    expr = expr or isinstance(module, FullyConnected)
-    expr = expr or isinstance(module, Convolution2d)
-    expr = expr or isinstance(module, ConvolutionTranspose2d)
-    return expr
+def get_masked_weights(layer):
+    with torch.no_grad():
+        for name, parameter in layer.named_parameters():
+            if any(key in name.split(".")[-1] for key in ["weight", "weight_orig"]):
+                break
+        for name, mask in layer.named_buffers():
+            if "weight_mask" in name.split(".")[-1]:
+                parameter = parameter * mask
+    return parameter
+
 
 def count_params(module):
     return sum(p.numel() for p in module.parameters())
