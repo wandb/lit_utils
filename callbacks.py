@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 import tempfile
 
+from lit_utils.nn.fc import FullyConnected
+from lit_utils.nn.conv import Convolution2d, ConvolutionTranspose2d
 import numpy as np
 import pytorch_lightning as pl
 import torch
@@ -317,16 +319,49 @@ class ImagePredLogCallback(pl.Callback):
 
 
 def get_weights(module):
-    weights = [parameter for name, parameter in module.named_parameters()
-               if "weight" in name.split(".")[-1]]
-    masks = [mask for name, mask in module.named_buffers()
-             if "weight_mask" in name.split(".")[-1]]
+    weights = []
+    masks = []
+    for submodule in module.children():
+        # recursively go down to individual layers
+        if isinstance(submodule, torch.nn.Sequential):
+            parent = submodule
+            while(isinstance(submodule, torch.nn.Sequential)):
+                parent = submodule
+                submodule = submodule.children()
+            for layer in parent.children():
+                if allowed_filter_type(layer):
+                    for name, parameter in layer.named_parameters():
+                        if "weight" in name.split(".")[-1]:
+                            weights.append(parameter)
+                    for name, mask in layer.named_buffers():
+                        if "weight_mask" in name.split(".")[-1]:
+                            masks.append(mask)
+        # else check if it is allowed type
+        elif allowed_filter_type(submodule):
+            for name, parameter in submodule.named_parameters():
+                if "weight" in name.split(".")[-1]:
+                    weights.append(parameter)
+            for name, mask in submodule.named_buffers():
+                if "weight_mask" in name.split(".")[-1]:
+                    masks.append(mask)
     if masks:
         with torch.no_grad():
             weights = [mask * weight for mask, weight in zip(masks, weights)]
 
     return weights
 
+
+def allowed_filter_type(module):
+    expr = isinstance(module, torch.nn.Conv2d)
+    expr = expr or issubclass(type(module), torch.nn.Conv2d)
+    expr = expr or isinstance(module, torch.nn.ConvTranspose2d)
+    expr = expr or issubclass(type(module), torch.nn.ConvTranspose2d)
+    expr = expr or isinstance(module, torch.nn.Linear)
+    expr = expr or issubclass(type(module), torch.nn.Linear)
+    expr = expr or isinstance(module, FullyConnected)
+    expr = expr or isinstance(module, Convolution2d)
+    expr = expr or isinstance(module, ConvolutionTranspose2d)
+    return expr
 
 def count_params(module):
     return sum(p.numel() for p in module.parameters())
