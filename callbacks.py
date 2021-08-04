@@ -8,7 +8,6 @@ import pytorch_lightning as pl
 import torch
 import wandb
 
-
 try:
     import torchviz
     has_torchviz = True
@@ -18,7 +17,6 @@ except ImportError:
 
 class WandbCallback():
     """Logs useful config and metric data to Weights & Biases."""
-
     def __init__(self):
         self.cbs = [MetadataLogCallback(), ModelSizeLogCallback(), GraphLogCallback()]
 
@@ -103,7 +101,7 @@ class FilterLogCallback(pl.Callback):
         if len(output_shape) < 2:
             raise ValueError("output_shape must be at least H x W")
         if np.prod(output_shape) != filter_weights.shape[1]:
-            raise("shape of filter_weights did not match output_shape")
+            raise ValueError("shape of filter_weights did not match output_shape")
         return torch.reshape(filter_weights, [-1] + list(output_shape))
 
 
@@ -129,12 +127,11 @@ class ImageLogCallback(pl.Callback):
             "test/examples": [wandb.Image(mosaic, caption=caption)
                               for mosaic in mosaics],
             "global_step": trainer.global_step
-            })
+        })
 
 
 class ModelSizeLogCallback(pl.Callback):
     """Logs information about model size to Weights & Biases."""
-
     def __init__(self, count_nonzero=False):
         super().__init__()
         self.count_nonzero = count_nonzero
@@ -164,7 +161,6 @@ class ModelSizeLogCallback(pl.Callback):
 
 class GraphLogCallback(pl.Callback):
     """Logs a compute graph to Weights & Biases."""
-
     def __init__(self):
         super().__init__()
         self.graph_logged = False
@@ -190,7 +186,6 @@ class GraphLogCallback(pl.Callback):
 
 class SparsityLogCallback(pl.Callback):
     """PyTorch Lightning Callback for logging the sparsity of weight tensors in a PyTorch Module."""
-
     def on_validation_epoch_end(self, trainer, module):
         self.log_sparsities(trainer, module)
 
@@ -317,15 +312,25 @@ class ImagePredLogCallback(pl.Callback):
 
 
 def get_weights(module):
-    weights = [parameter for name, parameter in module.named_parameters()
-               if "weight" in name.split(".")[-1]]
-    masks = [mask for name, mask in module.named_buffers()
-             if "weight_mask" in name.split(".")[-1]]
-    if masks:
-        with torch.no_grad():
-            weights = [mask * weight for mask, weight in zip(masks, weights)]
+    allowed_filter_types = (
+        torch.nn.Linear,
+        torch.nn.Conv2d,
+        torch.nn.ConvTranspose2d
+    )
+    ls = [m for m in module.modules() if isinstance(m, allowed_filter_types)]
+    ws = list(map(get_masked_weights, ls))
+    return ws
 
-    return weights
+
+def get_masked_weights(layer):
+    with torch.no_grad():
+        for name, parameter in layer.named_parameters():
+            if any(key in name.split(".")[-1] for key in ["weight", "weight_orig"]):
+                break
+        for name, mask in layer.named_buffers():
+            if "weight_mask" in name.split(".")[-1]:
+                parameter = parameter * mask
+    return parameter
 
 
 def count_params(module):
