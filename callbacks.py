@@ -10,7 +10,6 @@ import wandb
 
 try:
     import torchviz
-
     has_torchviz = True
 except ImportError:
     has_torchviz = False
@@ -18,7 +17,6 @@ except ImportError:
 
 class WandbCallback():
     """Logs useful config and metric data to Weights & Biases."""
-
     def __init__(self):
         self.cbs = [MetadataLogCallback(), ModelSizeLogCallback(), GraphLogCallback()]
 
@@ -41,7 +39,6 @@ class FilterLogCallback(pl.Callback):
     log_output boolean flags) for logging and sends them to Weights & Biases as
     images.
     """
-
     def __init__(self, image_size=None, log_input=False, log_output=False):
         super().__init__()
         if image_size is not None and len(image_size) == 2:
@@ -104,7 +101,7 @@ class FilterLogCallback(pl.Callback):
         if len(output_shape) < 2:
             raise ValueError("output_shape must be at least H x W")
         if np.prod(output_shape) != filter_weights.shape[1]:
-            raise ("shape of filter_weights did not match output_shape")
+            raise ValueError("shape of filter_weights did not match output_shape")
         return torch.reshape(filter_weights, [-1] + list(output_shape))
 
 
@@ -114,7 +111,6 @@ class ImageLogCallback(pl.Callback):
     Useful in combination with, e.g., an autoencoder architecture,
     a convolutional GAN, or any image-to-image transformation network.
     """
-
     def __init__(self, val_samples, num_samples=32):
         super().__init__()
         self.val_imgs, _ = val_samples
@@ -136,7 +132,6 @@ class ImageLogCallback(pl.Callback):
 
 class ModelSizeLogCallback(pl.Callback):
     """Logs information about model size to Weights & Biases."""
-
     def __init__(self, count_nonzero=False):
         super().__init__()
         self.count_nonzero = count_nonzero
@@ -166,7 +161,6 @@ class ModelSizeLogCallback(pl.Callback):
 
 class GraphLogCallback(pl.Callback):
     """Logs a compute graph to Weights & Biases."""
-
     def __init__(self):
         super().__init__()
         self.graph_logged = False
@@ -192,7 +186,6 @@ class GraphLogCallback(pl.Callback):
 
 class SparsityLogCallback(pl.Callback):
     """PyTorch Lightning Callback for logging the sparsity of weight tensors in a PyTorch Module."""
-
     def on_validation_epoch_end(self, trainer, module):
         self.log_sparsities(trainer, module)
 
